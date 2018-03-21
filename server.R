@@ -1,14 +1,6 @@
-# Server function for the shiny app in conjunction with Modelling With Impact
-# As presented 27 Feb, 2018, by Craig Savage
-#
-# Note that highcharts is not free for commercial or government use.
-
-
 server = function(input, output) {
   
-  # These will all be under the same paradigm:
-  # A chart with a draggable point, an observer that detects the change, and a second plot that has the updated VAR.
-  # Abstracting them would be better, but this works for a demo!
+  
   output$highUnemp <- renderHighchart({
     
     hc <- highchart() %>%
@@ -19,7 +11,6 @@ server = function(input, output) {
       hc_add_series( data=nextData, type='scatter'
                      , hcaes( x=Date, y=unempRate )
                      , name='Future'
-                     # Note the draggableY option
                      , draggableY=TRUE ) %>%
       hc_plotOptions(
         series = list(
@@ -40,7 +31,6 @@ server = function(input, output) {
     hc 
     
   })
-  # If the other graph changes, update the VAR.
   observeEvent( input$hcUnemp, {
     
     inputaux <- input$hcUnemp
@@ -53,17 +43,19 @@ server = function(input, output) {
       print( highRV$nextData )
       
       updateData <- bind_rows( macroData1, highRV$nextData )
+      print( tail( updateData ) )
       
-      highRV$varObj <- updateVAR( updateData )
-      
-      predictData <- predict( highRV$varObj, 20 )
-      highRV$forecastData <- predict2forecastDF( predictData, nextDate )
+      highRV$varObject <- updateVAR( updateData )
+      print( tail( highRV$varObject$y ))
+      predictData <- predict( highRV$varObject, n.ahead=20 )
+      highRV$forecastData <- predict2forecastDF( predictData
+                                                 , max( nextData$Date ) %m+% months(3) )
     }
     
   })
   
-  # Forecast unemployment, based on update of previous.
   output$highUnemp2 <- renderHighchart({
+    
     
     hc1 <- highchart() %>%
       hc_add_series(data = macroData1
@@ -71,6 +63,11 @@ server = function(input, output) {
                     , type = "line"
                     , name = "Historical"
                     , colorIndex=1 ) %>%
+      hc_add_series( data=highRV$nextData
+                     , hcaes( x=Date, y=unempRate )
+                     , type="line"
+                     , name="Input"
+                      ) %>%
       hc_add_series( data=highRV$forecastData
                      , hcaes( x=Date, y=unempRate )
                      , type='line'
@@ -129,10 +126,11 @@ server = function(input, output) {
       
       updateData <- bind_rows( macroData1, highRV$nextData )
       
-      highRV$varObj <- updateVAR( updateData )
+      highRV$varObject <- updateVAR( updateData )
       
-      predictData <- predict( highRV$varObj, 20 )
-      highRV$forecastData <- predict2forecastDF( predictData, nextDate )
+      predictData <- predict( highRV$varObject, 20 )
+      highRV$forecastData <- predict2forecastDF( predictData
+                                                 , max( nextData$Date ) %m+% months(3) )
     }
     
   })
@@ -145,6 +143,11 @@ server = function(input, output) {
                     , type = "line"
                     , name = "Historical Wage Growth"
                     , colorIndex=2) %>%
+      hc_add_series( data=highRV$nextData
+                     , hcaes( x=Date, y=wageGrowth )
+                     , type="line"
+                     , name="Input"
+      ) %>%
       hc_add_series( data=highRV$forecastData
                      , hcaes( x=Date, y=wageGrowth )
                      , type='line'
@@ -201,9 +204,9 @@ server = function(input, output) {
       
       updateData <- bind_rows( macroData1, highRV$nextData )
       
-      highRV$varObj <- updateVAR( updateData )
+      highRV$varObject <- updateVAR( updateData )
       
-      predictData <- predict( highRV$varObj, 20 )
+      predictData <- predict( highRV$varObject, 20 )
       highRV$forecastData <- predict2forecastDF( predictData, nextDate )
       
     }
@@ -219,6 +222,11 @@ server = function(input, output) {
                     , type = "line"
                     , name = "Historical GDP"
                     , colorIndex=3 ) %>%
+      hc_add_series( data=highRV$nextData
+                     , hcaes( x=Date, y=deltaGDP )
+                     , type="line"
+                     , name="Input"
+      ) %>%
       hc_add_series( data=highRV$forecastData
                      , hcaes( x=Date, y=deltaGDP )
                      , type='line'
